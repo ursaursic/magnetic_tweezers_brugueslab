@@ -4,6 +4,6 @@ This is a GitHub repository for the magnetic tweezers setup in the Brugues lab, 
 
 
 TODO:
-- *
+- [] Test github.
 
 
