@@ -12,12 +12,29 @@ class InjectMan:
 				 port='COM1',
 				 baud_rate=19200,
 				 is_simulated=False,
+				 default_speed=1000
 				 ) -> None:
 		""" Documentation of the class missing"""
 		# TODO: write the documentation.
 		self.port = port
 		self.baud_rate = baud_rate
 		self.is_simulated = is_simulated	# the InjectMan is simulated. no connection will be made and the object can be used for testing.
+		self.default_speed = default_speed	# Default speed in micrometers/s for the movement of the motors.
+		
+		
+		# ---------------------------------------------------------------------
+		# ### Setup constants
+		self.position_max_micrometers = 25e3  # Maximum position in micrometers
+		self.speed_max_micrometers = 7500  # Maximum speed in micrometers/s
+		
+		# Angle of the third motor
+		d1_calib = 11917
+		d3_calib = 15557
+		z_calib = 1e4
+		self.sin_theta = d1_calib / d3_calib
+		self.cos_theta = z_calib / d3_calib
+		
+		# ---------------------------------------------------------------------
 		
 		logging.info(f'InjectMan initialization...')
 		
@@ -110,12 +127,13 @@ class InjectMan:
 		Meaning of the answer: All motors have stopped.
 		"""
 		command_code = 7
-		# TODO: implement default velocity values ----> THink about a high level move functions with the blocking/non blocking parameter, handling the defaults as well.
-		# and leaving this just as a python wrapper.
-		# TODO: implement checking the valid range of parameters - make a special function to do that and can be used across the class.
-		# TODO: implement passing of the parameters 
-		raise NotImplementedError('passing of the parameters not yet implemented.')
-		return self.call_command_code(command_code)
+		# TODO: implement default velocity values ----> Tink about a high level move functions with
+		# TODO: the blocking/non blocking parameter, handling the defaults as well. and leaving this just as a python wrapper.
+		
+		self._validate_parameters_range([px, py, pz], -self.position_max_micrometers, self.position_max_micrometers)
+		self._validate_parameters_range([vx, vy, vz], -self.speed_max_micrometers, self.speed_max_micrometers)
+		
+		return self.call_command_code(command_code, px, py, pz, vx, vy, vz)
 
 	def STOP(self):
 		"""The current movement will be stopped.
@@ -177,9 +195,11 @@ class InjectMan:
 
 		command_code = 12
 		# TODO: implement default velocity values
-		# TODO: implement checking the valid range of parameters - make a special function to do that and can be used across the class.
-		# TODO: implement passing of the parameters 
-		raise NotImplementedError('passing of the parameters not yet implemented.')
+		
+		self._validate_parameters_range([px, py, pz], -self.position_max_micrometers, self.position_max_micrometers)
+		self._validate_parameters_range([vx, vy, vz], -self.speed_max_micrometers, self.speed_max_micrometers)
+		
+		return self.call_command_code(command_code, px, py, pz, vx, vy, vz)
 
 	def trigger_short_acoustic_signals(self, n):
 		"""The number of short (100 ms) acoustic
@@ -189,9 +209,8 @@ class InjectMan:
 		Parameter: Number of acoustic signals
 		"""
 		command_code = 14
-		# TODO: implement passing of the parameters
-		raise NotImplementedError('passing of the parameters not yet implemented.')
-		return self.call_command_code(command_code)
+		self._validate_parameters_range(n, 0, 999)
+		return self.call_command_code(command_code, n)
 
 	def trigger_long_acoustic_signals(self, n):
 		"""The number of long (1 second) acoustic
@@ -201,13 +220,8 @@ class InjectMan:
 		Parameter: Number of acoustic signals
 		"""
 		command_code = 15
-		# TODO: implement passing of the parameters
-		raise NotImplementedError('passing of the parameters not yet implemented.')
-		return self.call_command_code(command_code)
-
-
-		
-
+		self._validate_parameters_range(n, 0, 999)
+		return self.call_command_code(command_code, n)
 
 	# ---------------------------------------------------------
 
@@ -241,6 +255,8 @@ class InjectMan:
 		Returns:
 			parameters_list - if all the parameters are within the specified range.
 		"""
+		if type(parameters_list) is not list:
+			parameters_list = [parameters_list]
 		for p in parameters_list:
 			if lim_min <= p <= lim_max:
 				pass
@@ -249,42 +265,70 @@ class InjectMan:
 								 \r Parameter was in the list of {parameters_list}.""")
 		return parameters_list
 
-	def _movement_parameters_to_string(self, px, py, pz, vx, vy, vz):
+	# def _movement_parameters_to_string(self, px, py, pz, vx, vy, vz):
+	def _code_and_parameters_to_string(self, code, *parameters):
 		"""
-		Write movement parameters to a string seperated with spaces.
+		Return a string command with a code and parameters separated with spaces.
+
+		Example: 
+			_code_and_parameters_to_string(5, 10, 11, 12)
+			> C005 10 11 12
 		"""
-		# TODO:
-
-	
-
-
-
-	# ---------------------------------------------------------
-
-
+		# Transform numbers into strings
+		parameters = [str(x) for x in parameters]
+		
+		# Make string of parameters
+		parameters_str = " " if len(parameters) > 0 else ""
+		parameters_str += " ".join(parameters)
+		
+		
+		
+		logging.debug(f'_code_and_parameters_to_string(): code: {code} parameters_str: {parameters_str}')
+		
+		# Put it all together
+		command_string = f'C{code:03}{parameters_str}'
+		return command_string
 		
 	# custom command - with just string C001 (or int number: 1)
-	def call_command_code(self, command_name):
+	def call_command_code(self, command_name, *parameters: int):
 		"""
-		Call a command by its code using int or str.
+		Call a command by its code with parameters using integers or call a command str.
 
 		Args:
-			command_name (int or str): When of type int the message with that number is used.
-				When type str the exact string will be used as a command. 
+			command_name (int or str): When of type int the message with that number is created and parameters
+				added if present.
+				When type str the exact string will be used as a command and parameters will be ignored
 				Examples: 
 					4 -> 'C004'
+					4, 10, 123 -> 'C004 10, 123'
 					'C001 5 70' -> 'C001 5 70'
+					'C001 5 70', 123, 400 -> 'C001 5 70'
+			*parameters (int): integers to be added to the string message (separated with spaces)
 		"""
 		if type(command_name) == str:
-			pass
+			command_string = command_name
 		elif type(command_name) == int:
 			if 0 < command_name < 1000:
 				command_name = f'C{command_name:03}'
+				
+				# Deal with the parameters:
+				parameters = [str(int(x)) for x in parameters]
+				
+				# Make string of parameters - it is empty if there are no parameters.
+				parameters_str = " " if len(parameters) > 0 else ""
+				parameters_str += " ".join(parameters)
+				
+				logging.debug(f'call_command_code(): code: {command_name} parameters_str: {parameters_str}')
+				
+				# Put it all together
+				command_string = f'{command_name}{parameters_str}'
+				
 			else:
-				logging.warning(f'Value {command_name} out of bounds for (0, 1000).')
+				raise ValueError(f"Value {command_name} out of bounds for [1, 999].")
+			
 
-		result = self.send_command_serial(command_name)
-		logging.debug(f'in call_command_code:\n\tcommand: {command_name}\n\t anwser: {result}')
+		result = self.send_command_serial(command_string)
+		logging.debug(f'in call_command_code:\n\tcommand: {command_string}\n\t anwser: {result}')
 		return result
 
 	# send command to serial (all other calls use this to send )
@@ -316,6 +360,78 @@ class InjectMan:
 				return f'A{command_str[1:]}'
 		else:
 			return f'ERR:{command_str}'
+	
+	
+	# ---------------------------------------------------------
+	# ### Math functions:
+	
+	def _d2p(self, d):
+		"""
+		Compute 3D position p (x, y, z) from motor positions d
+
+		:param d: [d1, d2, d3] are the motor position values
+		:return: p [x, y, z] 3D position in inject man coordinate frame (z facing down)
+		"""
+		d1, d2, d3 = d
+		
+		x = d1 - d3 * self.sin_theta
+		y = d2
+		z = d3 * self.cos_theta
+		
+		p = x, y, z
+		return p
+	
+	def _p2d(self, p):
+		"""
+		Compute motor positions d from 3D position p (x, y, z)
+
+		:param p: [x, y, z] 3D position inject man coordinate frame (z facing down)
+		:return: [d1, d2, d3] the motor position values
+		"""
+		x, y, z = p
+		
+		d3 = z / self.cos_theta
+		d1 = x + d3 * self.sin_theta
+		d2 = y
+		
+		d = d1, d2, d3
+		return d
+	
+	# ---------------------------------------------------------
+	# ### High level functions:
+	
+	def move_to(self, p, v=None, wait_for_completion=True):
+		'''
+		Move to a position in 3D (x, y, z) space.
+		
+		The function takes care of computation the right motor positions.
+		
+		:param p: position [x, y, z] to move to
+		:param v: speed of the movement (at the moment one value is used for all 3 axes)
+		:param wait_for_completion: sets to wait for the complete message, or to call the function that
+						moves the inject man without "complete" message
+		:return: reply from injectman
+		'''
+		
+		v = v if v is not None else self.default_speed
+		
+		# TODO: scale the speed values so that all motors start and stop synchronous (maybe add an option for that?)
+		vs = [v for i in range(3)]
+		
+		d = self._p2d(p)
+		
+		if wait_for_completion:
+			r = self.GOTO_position_in_micrometers(*d, *vs)
+		else:
+			r = self.GOTO_position_in_micrometers_NB(*d, *vs)
+		
+		return r
+	
+	def move_for(self):
+		# TODO: Implementation
+		# TODO: decide if we query current position everytime or store the "supposed" possition in python
+		pass
+		raise NotImplementedError("move_for not yet implemented.")
 
 	
 
