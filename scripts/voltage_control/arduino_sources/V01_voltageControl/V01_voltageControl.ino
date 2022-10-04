@@ -1,7 +1,7 @@
 /* 
  * Part of Magnetic tweezers project on CBG
  * Voltage control with Arduino - Arduino is used as DAC and ADC. 
- * Program mean to be used as an interface between python and constant current generator.
+ * Program meant to be used as an interface between python and constant current generator.
  *
  * by Erik Plesko
  * 7.5.2022
@@ -28,15 +28,16 @@
 
 
 // pins 5, 6 with frequency 980 Hz
-#define VinPin 5        // Vin of current generator
+#define VinPin 5        // Output voltage, but labeled as on the current generator: Vin
 #define VLEDPin 6       // LED, used to visualise Vin value
 #define VsensePin A0
 
 
 bool autoTimeoutOn = true;              // Output voltage is set to zero if there are no commands received for time of autoTimeoutTime
-unsigned int autoTimeoutTime = 1000;     // milliseconds
-unsigned long autoTimeoutTimer = 0;     // Reset everytime voltage command is received
+unsigned int autoTimeoutTime = 200;     // milliseconds
+unsigned long autoTimeoutTimer = 0;     // Timer. it is reset every time voltage command is received
 
+int Vmax = 2000;    // Max voltage to be set on the output pin VinPin
 
 // Serial Command:
 SerialCommand scmd;
@@ -49,10 +50,10 @@ bool printAll = true;
 
 
 void setup() {
-	Serial.begin(115200);
+	Serial.begin(19200);
 
-	scmd.addCommand("!VO", cmd_set_voltage);            // _todo
-	scmd.addCommand("?VO", cmd_get_voltage);            // _todo
+	scmd.addCommand("!VI", cmd_set_voltage);            // _ #voltageIn [mV]   // Set voltage In (it goes out, but the signal goes to V-in on the current generator)
+	scmd.addCommand("?VS", cmd_get_voltage);            // _ /                 // Read the voltage (connected to V-sense)
 	scmd.addCommand("!TT", cmd_set_auto_timeout_time);  // _ #autoTimeoutTime
 	scmd.addCommand("!TO", cmd_set_auto_timeout_on);    // _ #autoTimeoutOn (0 or 1)
 
@@ -66,7 +67,7 @@ void setup() {
 	pinMode(LED_BUILTIN, OUTPUT);   // Builtin LED
 
 	Serial.println(F("Setup done."));
-	Serial.println(F("File: V01_voltageControl"));
+	Serial.println(F("File: V01_voltageControl.1"));
 
 }
 
@@ -82,7 +83,7 @@ void loop() {
 	}
 	
 
-
+  
 	// delay(300);
 	// cmd_get_voltage();
 	// set_voltage_pin(4500);
@@ -126,7 +127,10 @@ void set_voltage_pin(int voltage) {
 	byte DA;    // value to set to DAC
 
 	// TODO:
-	// Limit the output voltage yo Vmax (3V - or whatever)
+	// Do it nicer: Limit the output voltage yo Vmax (3V - or whatever)
+    if (voltage > Vmax) {
+        voltage = Vmax;
+    }
 
 
 	DA = mV_2_DA(voltage);
@@ -165,7 +169,7 @@ void unrecognized() {
 }
 
 void cmd_test() {
-	Serial.println("cmd_test function call.");
+	Serial.println(F("cmd_test function call."));
 
 	char * arg;
 
@@ -189,6 +193,8 @@ void cmd_set_voltage() {
 		val = atol( arg );
 
 		set_voltage_pin(val);
+
+    Serial.print(F("#VI ")); Serial.println(val);
 		
 		if (printAll) {
 			Serial.print(F("voltage set to "));
@@ -202,7 +208,8 @@ void cmd_set_voltage() {
 void cmd_get_voltage () {
 	// TODO:
 
-	Serial.println(AD_2_mV((analogRead(VsensePin))));
+
+  Serial.print(F("#VS ")); Serial.println(AD_2_mV((analogRead(VsensePin))));
 	if (printAll) {
 		Serial.println(F("That was VsensePin [mV] "));
 	}
