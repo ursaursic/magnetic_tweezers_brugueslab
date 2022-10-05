@@ -56,6 +56,7 @@ void setup() {
 	scmd.addCommand("?VS", cmd_get_voltage);            // _ /                 // Read the voltage (connected to V-sense)
 	scmd.addCommand("!TT", cmd_set_auto_timeout_time);  // _ #autoTimeoutTime
 	scmd.addCommand("!TO", cmd_set_auto_timeout_on);    // _ #autoTimeoutOn (0 or 1)
+    scmd.addCommand("!VM", cmd_set_voltage_max);        // _ #Vmax (in range 0 to 3000)
 
 	// General:
 	scmd.addCommand("!PA", cmd_setPrintAll);            // _ #printAll (0 or 1)
@@ -242,6 +243,28 @@ void cmd_set_auto_timeout_on () {
 		if (printAll) {
 			Serial.print(F("autoTimeoutOn set to "));
 			Serial.println(autoTimeoutOn);
+		}
+	}
+}
+
+void cmd_set_voltage_max () {
+	char * arg;
+	int val;
+
+	arg = scmd.next();
+	if ( arg != NULL) {
+		val = atol( arg );
+        // Vmax should be in the range [0, 3000]
+        if (val >= 0 && val <= 3000) {
+		    Vmax = val;
+        } else {
+            if (printAll) {
+                Serial.println(F("Value for Vmax is out of range [0, 3000]."));
+            }
+        }
+		if (printAll) {
+			Serial.print(F("Vmax set to "));
+			Serial.println(Vmax);
 		}
 	}
 }
