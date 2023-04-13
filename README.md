@@ -1,11 +1,14 @@
+# Magnetic tweezers in Brugues lab (room 426b)
 Ursa Ursic & Erik Plesko, 2022
 
 This is a GitHub repository for the magnetic tweezers setup in the Brugues lab, MPI-CBG, Dresden. 
 
+_include detailed description of the setup_
 
-TODO:
-- [x] Test github.
-- [] Test branches and merging.
-- [] Test what happens with changes made on github.
+## How to use this?
+
+
+
+
 
 
