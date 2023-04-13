@@ -1,0 +1,5 @@
+#TODO: by Erik 7.9.22
+
+the file serial_connection.py is needed in InjectMan and in VoltageControl.
+right now I copied the file manually, and there is the same file in both folders, not good.
+Tackle this and make in nice and how it's supposed to be (figure out those imports and the structure).
