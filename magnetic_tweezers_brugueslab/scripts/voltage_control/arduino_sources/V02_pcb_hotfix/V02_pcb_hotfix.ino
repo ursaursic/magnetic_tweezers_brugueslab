@@ -9,34 +9,26 @@
  * Voltage units: mV
  * Time units: ms
  *
- *
- *
- *
- *
- *
 */
 
 
-
-
-
-
-
-
-
+// -- Include --------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
+// For serial communication
 #include <SerialCommand.h>
-
-
-// pins 5, 6 with frequency 980 Hz
-#define VinPin 5        // Output voltage, but labeled as on the current generator: Vin
-#define VLEDPin 6       // LED, used to visualise Vin value
-#define VsensePin A0
-// Definitions for the PCB board -------------------
+// For LEDs on the PCB (and sync LED)
 #include <FastLED.h>
-// Adafruit (ADC and DAC)
+// For Adafruit boards on the PBC (ADC and DAC)
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_MCP4728.h>
+
+// -- Define ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
+// Pins 5, 6 with frequency 980 Hz
+#define VinPin 5        // Output voltage, but labeled as on the current generator: Vin
+#define VLEDPin 6       // LED, used to visualise Vin value
+#define VsensePin A0
 
 // ADC - DAC pins
 #define T1_VIN_PIN_NUMBER MCP4728_CHANNEL_A     // mcp pin number for the tip 1 Vin pin
@@ -44,15 +36,13 @@
 // LEDs numbers:
 #define T1_VIN_LED_NUMBER 0
 #define T1_VS_LED_NUMBER 1
-
-
-Adafruit_ADS1115 ads1115;
-Adafruit_MCP4728 mcp4728;
+// 
 
 #define LED_PIN     2
 #define NUM_LEDS    4
-CRGB leds[NUM_LEDS];
-// --------------------------------------------------
+
+// -- Prepare --------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------
 
 bool autoTimeoutOn = true;              // Output voltage is set to zero if there are no commands received for time of autoTimeoutTime
 unsigned int autoTimeoutTime = 200;     // milliseconds
@@ -60,14 +50,18 @@ unsigned long autoTimeoutTimer = 0;     // Timer. it is reset every time voltage
 
 int Vmax = 2000;    // Max voltage to be set on the output pin VinPin
 
+
 // Serial Command:
 SerialCommand scmd;
+// ADC:
+Adafruit_ADS1115 ads1115;
+// DAC:
+Adafruit_MCP4728 mcp4728;
+// LEDs
+CRGB leds[NUM_LEDS];
 
-
-// Debuging:
+// Debugging:
 bool printAll = true;
-
-
 
 
 void setup() {
@@ -113,15 +107,12 @@ void setup() {
     mcp4728.setChannelValue(MCP4728_CHANNEL_D, 0);
 
 
-
     Serial.println(F("Setup done for the Adafruit things."));
-    // -------------------------------------------------
-
 }
 
 
 void loop() {
-	// Serial commands
+	// Manage serial commands:
 	scmd.readSerial();
 
 	if (autoTimeoutOn) {
@@ -130,24 +121,10 @@ void loop() {
 		}
 	}
 	
-
-  
-	// delay(300);
-	// cmd_get_voltage();
-	// set_voltage_pin(4500);
-	// delay(10);
-	// set_voltage_pin(100);
-	// delay(10);
-    
-    
-    
-    
 }
 
-
-// -------------------------------------------------------------------------------
-// *** Functions: *** ------------------------------------------------------------
-
+// -------------------------------------------------------------------------------------
+// -- Functions ------------------------------------------------------------------------
 
 int mV_2_DA(long mV) {
 	long val;
@@ -166,11 +143,13 @@ int mV_2_DA(long mV) {
 	return DA;
 }
 
+
 int16_t read_adc(int pin_number) {
     int16_t adc;
     adc = ads1115.readADC_SingleEnded(pin_number);
     return adc;
 }
+
 
 long AD_2_mV(long AD) {
     // TODO: make the led for reading a bit nicer, and maybe read every 100 ms or so, not just when read is called.
@@ -223,13 +202,13 @@ void blinkBuiltinLED(int number, int blinkTime) {
 }
 
 
-
 void turnOff() {
 	for(int i = 0; i<NUM_LEDS; i++){
 		leds[i] = CRGB(0, 0, 0);
 	}
 	FastLED.show();
 }
+
 
 void LEDsRGB(int R, int G, int B) {
 	// Turns all leds to white with set brightness
@@ -239,10 +218,8 @@ void LEDsRGB(int R, int G, int B) {
 	FastLED.show();
 }
 
-
-
-// -------------------------------------------------------------------------------
-// *** SerialCommand functions: *** ----------------------------------------------
+// -------------------------------------------------------------------------------------
+// -- SerialCommand functions: ---------------------------------------------------------
 
 void unrecognized() {
 	Serial.println(F("Unrecognized command."));
@@ -251,6 +228,7 @@ void unrecognized() {
     delay(50);
     turnOff();
 }
+
 
 void cmd_test() {
 	Serial.println(F("cmd_test function call."));
@@ -291,9 +269,8 @@ void cmd_set_voltage() {
 			Serial.println(val);
 		}
 	}
-
-
 }
+
 
 void cmd_get_voltage () {
 	// TODO:
@@ -305,6 +282,7 @@ void cmd_get_voltage () {
 	}
 	
 }
+
 
 void cmd_set_auto_timeout_time () {
 	char * arg;
@@ -321,6 +299,7 @@ void cmd_set_auto_timeout_time () {
 	}
 }
 
+
 void cmd_set_auto_timeout_on () {
 	char * arg;
 	int val;
@@ -335,6 +314,7 @@ void cmd_set_auto_timeout_on () {
 		}
 	}
 }
+
 
 void cmd_set_voltage_max () {
 	char * arg;
@@ -358,6 +338,7 @@ void cmd_set_voltage_max () {
 	}
 }
 
+
 void cmd_setPrintAll() {
 	char * arg;
 	int val;
@@ -372,56 +353,3 @@ void cmd_setPrintAll() {
 		}
 	}
 }
-
-
-
-// #### End of document #################################################################
-// ######################################################################################
-
-
-
-
-
-
-
-
-
-// void cmd_moveJ() {
-// 	char * arg;
-// 	long steps1;
-// 	long steps2;
-// 	int servoValOld;
-
-// 	arg = scmd.next();
-// 	if ( arg != NULL) {
-		
-// 		steps1 = atol( arg );
-
-// 		arg = scmd.next();
-// 		if (arg != NULL) {
-			
-// 			steps2 = atol( arg );
-
-// 			stepper1.moveTo(steps1);
-// 			stepper2.moveTo(steps2);
-
-// 			// Move servo:
-// 			arg = scmd.next();
-// 			if (arg != NULL) {
-// 				servoValOld = servo3.read();
-// 				servo3.write(atol( arg ));
-// 				delay(2*abs(servoValOld-servo3.read()));
-// 			}
-
-// 			targetReached = false;
-// 			runMotorsBySpeed = false;
-
-// 			if (printAll) {
-// 				Serial.print("steps1: "); Serial.println(steps1);
-// 				Serial.print("steps2: "); Serial.println(steps2);
-// 			}
-// 		}
-		
-// 	}
-
-// }
