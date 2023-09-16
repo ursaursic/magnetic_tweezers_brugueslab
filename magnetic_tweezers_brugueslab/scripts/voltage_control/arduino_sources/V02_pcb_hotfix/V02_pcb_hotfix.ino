@@ -1,15 +1,19 @@
 /* 
  * Part of Magnetic tweezers project on CBG
- * Voltage control with Arduino - Arduino is used as DAC and ADC. 
+ * Voltage control with Arduino using Adafruit ADC and DAC boards 
+ * (ADC Adafruit ADS1115, DAC: Adafruit_MCP4728)
+ * 
  * Program meant to be used as an interface between python and constant current generator.
+ * Pins Vin and Vsense are named to match the labeled names on the current generator. Vin 
+ * is an output signal that goes to the Vin of the current generator. 
  *
  * by Erik Plesko
- * 7.5.2022
+ * September 2023
  * 
  * Voltage units: mV
  * Time units: ms
  *
-*/
+ */
 
 
 // -- Include --------------------------------------------------------------------------
@@ -27,26 +31,36 @@
 // -------------------------------------------------------------------------------------
 // Pins 5, 6 with frequency 980 Hz
 #define VinPin 5        // Output voltage, but labeled as on the current generator: Vin
-#define VLEDPin 6       // LED, used to visualise Vin value
+#define VLEDPin 6       // LED, used to visualize Vin value
 #define VsensePin A0
 
 // ADC - DAC pins
 #define T1_VIN_PIN_NUMBER MCP4728_CHANNEL_A     // mcp pin number for the tip 1 Vin pin
+#define T2_VIN_PIN_NUMBER MCP4728_CHANNEL_B     // mcp pin number for the tip 2 Vin pin
 #define T1_VS_PIN_NUMBER 0                      // ads pin number for the tip 1 VS pin
+#define T2_VS_PIN_NUMBER 1                      // ads pin number for the tip 2 VS pin
 // LEDs numbers:
 #define T1_VIN_LED_NUMBER 0
 #define T1_VS_LED_NUMBER 1
-// 
+#define T1_VIN_LED_NUMBER 2
+#define T1_VS_LED_NUMBER 3
 
-#define LED_PIN     2
-#define NUM_LEDS    4
+// TODO: legacy, from before the pcb board:
+#define LED_PIN     2  // Pin for LEDs on the PCB
+#define NUM_LEDS    4  // Number of LEDs on the PCB
+
+// TODO: Use those values in the functions 
+#define VCC 4710 // mv
+#define N_BITS_ADC 32768 // 16 bit signed value
+#define N_BITS_DAC 4095 // 12 bit
 
 // -- Prepare --------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 
 bool autoTimeoutOn = true;              // Output voltage is set to zero if there are no commands received for time of autoTimeoutTime
 unsigned int autoTimeoutTime = 200;     // milliseconds
-unsigned long autoTimeoutTimer = 0;     // Timer. it is reset every time voltage command is received
+unsigned long autoTimeoutTimer_1 = 0;     // Timer for tip 1. it is reset every time voltage command is received for tip 1
+unsigned long autoTimeoutTimer_2 = 0;     // Timer for tip 2. it is reset every time voltage command is received for tip 2
 
 int Vmax = 2000;    // Max voltage to be set on the output pin VinPin
 
@@ -65,6 +79,10 @@ bool printAll = true;
 
 
 void setup() {
+    // LEDs
+   	FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
+    LEDsRGB(0, 100, 0);
+
 	Serial.begin(19200);
 
 	scmd.addCommand("!VI", cmd_set_voltage);            // _ #voltageIn [mV]   // Set voltage In (it goes out, but the signal goes to V-in on the current generator)
@@ -79,35 +97,26 @@ void setup() {
 	scmd.addDefaultHandler(unrecognized);
 
 
-	// I/O
+	// TODO: legacy
 	pinMode(LED_BUILTIN, OUTPUT);   // Builtin LED
-
-	Serial.println(F("Setup done."));
-	Serial.println(F("File: V02_pcb_hotfix.ino"));
-
-    // Definitions for the PCB board -------------------
-
-    // LEDs
-   	FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
-	turnOff();
 
 
     // D-ADCs:
     // TODO: check the i2c addresses and select them here in the code (even if we know that boards have defaults)
     ads1115.begin();
     ads1115.setGain(GAIN_ONE); 
-    // TODO now: calculate the right voltage based on the VCC (4.7 V probably?)
 
     mcp4728.begin();
-
     // TODO now: set the voltage based on the serial command
-    mcp4728.setChannelValue(MCP4728_CHANNEL_A, 4095);
-    mcp4728.setChannelValue(MCP4728_CHANNEL_B, 2048);
-    mcp4728.setChannelValue(MCP4728_CHANNEL_C, 1024);
+    mcp4728.setChannelValue(MCP4728_CHANNEL_A, 0);
+    mcp4728.setChannelValue(MCP4728_CHANNEL_B, 0);
+    mcp4728.setChannelValue(MCP4728_CHANNEL_C, 0);
     mcp4728.setChannelValue(MCP4728_CHANNEL_D, 0);
 
 
-    Serial.println(F("Setup done for the Adafruit things."));
+	Serial.println(F("Setup done."));
+	Serial.println(F("File: V02_pcb_hotfix.ino, 2 tips version"));
+	turnOff();
 }
 
 
@@ -116,8 +125,13 @@ void loop() {
 	scmd.readSerial();
 
 	if (autoTimeoutOn) {
-		if (millis() > autoTimeoutTimer + autoTimeoutTime) {
+		if (millis() > autoTimeoutTimer_1 + autoTimeoutTime) {
 			set_voltage_pin(0);
+		}
+
+        if (millis() > autoTimeoutTimer_2 + autoTimeoutTime) {
+			// TODO: set voltage of tip 2
+            // set_voltage_pin(0);
 		}
 	}
 	
@@ -184,7 +198,7 @@ void set_voltage_pin(int voltage) {
     leds[T1_VIN_LED_NUMBER] = CRGB(0, computation_var/4095, 0);  // green - Brightness as percent of "Vcc"
     FastLED.show();
 
-	autoTimeoutTimer = millis();   
+	autoTimeoutTimer_1 = millis();   
 }
 
 
