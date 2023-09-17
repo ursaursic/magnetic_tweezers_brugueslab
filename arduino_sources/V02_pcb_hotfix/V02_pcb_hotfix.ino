@@ -200,7 +200,12 @@ void set_voltage_pin(int tip_number, int voltage) {
 	// Set DAC:
 	DA = mV_2_DA(voltage);
     mcp4728.setChannelValue(vin_pin_of_tip[tip_number], DA);
-    if (printAll) Serial.print(F("Voltage set. Tip: ")); Serial.print(tip_number); Serial.print(F(", voltage: ")); Serial.println(voltage);
+    if (printAll) {
+        Serial.print(F("Voltage set. Tip: ")); 
+        Serial.print(tip_number); 
+        Serial.print(F(", voltage: ")); 
+        Serial.println(voltage);
+    }
     
     // Set led:
     leds[vin_led_of_tip[tip_number]] = CRGB(0, long_type_one*255*voltage/VCC, 0);  // green - Brightness as percent of "Vcc"
