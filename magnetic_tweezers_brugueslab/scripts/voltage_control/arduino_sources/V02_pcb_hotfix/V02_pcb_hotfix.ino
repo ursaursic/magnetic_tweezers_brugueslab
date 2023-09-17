@@ -129,8 +129,9 @@ void setup() {
     mcp4728.setChannelValue(MCP4728_CHANNEL_D, 0);
 
 	Serial.println(F("Setup done."));
-	Serial.println(F("File: V02_pcb_hotfix.ino, v0.1.1"));
+	Serial.println(F("File: V02_pcb_hotfix.ino, v0.1.2"));
     Serial.print(F("MAXSERIALCOMMANDS should be 15. It is: ")); Serial.println(MAXSERIALCOMMANDS);
+    Serial.println(F("For help type 'help'."));
 	turnOff();
 }
 
@@ -308,7 +309,7 @@ void cmd_set_all_tips() {
         arg = scmd.next();
         if (arg != NULL) {
             voltage_1 = atol( arg );
-            set_voltage_pin(0, voltage_1);
+            set_voltage_pin(1, voltage_1);
         }
 
         Serial.print(F("#AT ")); Serial.print(voltage_0); Serial.print(F(" ")); Serial.println(voltage_1);
