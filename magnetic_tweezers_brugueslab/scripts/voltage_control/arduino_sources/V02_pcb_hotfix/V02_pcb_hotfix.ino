@@ -73,7 +73,6 @@ unsigned long update_vsense_leds_timers[] = {0, 0}; // Timers for each tip respe
 
 int Vmax = 2000;    // Max voltage to be set on the output pin VinPin
 
-
 // Serial Command:
 SerialCommand scmd;
 // ADC:
@@ -97,6 +96,10 @@ void setup() {
 	// TODO: legacy:
     // scmd.addCommand("!VI", cmd_set_voltage);            // _ #voltageIn [mV]   // Set voltage In (it goes out, but the signal goes to V-in on the current generator)
 	
+    // NOTE: The SerialCommand allows 10 commands to be added by default. For more the 
+    // value MAXSERIALCOMMANDS in the SerialCommand.h should be changed.
+    // At the time of writing there are 11 commands and I increased it to 15
+
     scmd.addCommand("!ST", cmd_set_single_tip);         // _ #tipNumber #voltageIn [mV]   // Set voltage In for a single tip (tip number starts with zero)
 	scmd.addCommand("!AT", cmd_set_all_tips);           // _ #voltageInTip0 #voltageInTip1 [mV]   // Set voltage In for a single tip
 	
@@ -137,6 +140,7 @@ void setup() {
 
 	Serial.println(F("Setup done."));
 	Serial.println(F("File: V02_pcb_hotfix.ino, 2 tips version"));
+    Serial.print(F("MAXSERIALCOMMANDS should be 15. It is: ")); Serial.println(MAXSERIALCOMMANDS);
 	turnOff();
 }
 
