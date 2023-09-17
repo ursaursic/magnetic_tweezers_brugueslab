@@ -29,10 +29,6 @@
 
 // -- Define ---------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
-// Pins 5, 6 with frequency 980 Hz
-#define VinPin 5        // Output voltage, but labeled as on the current generator: Vin
-#define VLEDPin 6       // LED, used to visualize Vin value
-#define VsensePin A0
 
 // ADC - DAC pins
 #define T1_VIN_PIN_NUMBER MCP4728_CHANNEL_A     // mcp pin number for the tip 1 Vin pin
@@ -45,11 +41,10 @@
 #define T2_VIN_LED_NUMBER 2
 #define T2_VS_LED_NUMBER 3
 
-// TODO: legacy, from before the pcb board:
 #define LED_PIN     2  // Pin for LEDs on the PCB
 #define NUM_LEDS    4  // Number of LEDs on the PCB
 
-// TODO: Use those values in the functions 
+// TODO: today Use those values in the functions 
 #define VCC 4710 // mv
 #define N_BITS_ADC 32768 // 16 bit signed value
 #define N_BITS_DAC 4095 // 12 bit
@@ -93,37 +88,34 @@ void setup() {
 
 	Serial.begin(19200);
 
-	// TODO: legacy:
-    // scmd.addCommand("!VI", cmd_set_voltage);            // _ #voltageIn [mV]   // Set voltage In (it goes out, but the signal goes to V-in on the current generator)
-	
     // NOTE: The SerialCommand allows 10 commands to be added by default. For more the 
     // value MAXSERIALCOMMANDS in the SerialCommand.h should be changed.
     // At the time of writing there are 11 commands and I increased it to 15
 
-    scmd.addCommand("!ST", cmd_set_single_tip);         // _ #tipNumber #voltageIn [mV]   // Set voltage In for a single tip (tip number starts with zero)
-	scmd.addCommand("!AT", cmd_set_all_tips);           // _ #voltageInTip0 #voltageInTip1 [mV]   // Set voltage In for a single tip
+    // For function cmd_print_help the code below is just manually copied into print statements (and " replaced with '):
+    // --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // Example for using and reading this documentation: 
+    // Command is described in the line declaring the command and the comment. _ in the comment denotes command string (!ST in this case):
+    // scmd.addCommand("!ST", cmd_set_single_tip)                  //_ #tipNumber #voltageIn
+    // Using the command to set 500 mV for tip number 0 looks like: !ST 0 500
+
+    scmd.addCommand("!ST", cmd_set_single_tip);         // _ #tipNumber #voltageIn      // Set voltage In for a single tip (tip number starts with zero)
+	scmd.addCommand("!AT", cmd_set_all_tips);           // _ #voltageInTip0 #voltageInTip1  // Set voltage for all tips
+    scmd.addCommand("?ST", cmd_get_single_tip);         // _ #tipNumber                 // Read voltage for a single tip (tip number starts with zero)
+	scmd.addCommand("?AT", cmd_get_all_tips);           // _ /                          // Read voltage of all tips
 	
-    // TODO: legacy:
-    // scmd.addCommand("?VS", cmd_get_voltage);            // _ /                  // Read the voltage (connected to V-sense)
-	
-    scmd.addCommand("?ST", cmd_get_single_tip);         // _ #tipNumber         // Read voltage for a single tip (tip number starts with zero)
-	scmd.addCommand("?AT", cmd_get_all_tips);           // _ /                  // Read voltage of all tips
-	
-    scmd.addCommand("!TT", cmd_set_auto_timeout_time);  // _ #autoTimeoutTime
-	scmd.addCommand("!TO", cmd_set_auto_timeout_on);    // _ #autoTimeoutOn (0 or 1)
-    scmd.addCommand("!VM", cmd_set_voltage_max);        // _ #Vmax (in range 0 to 3000)
-    scmd.addCommand("!LT", cmd_set_update_leds_time);   // _ #update_vsense_leds_time ()
+    scmd.addCommand("!TT", cmd_set_auto_timeout_time);  // _ #autoTimeoutTime           // Set the time for auto time out (turn off) of the voltage of tips
+	scmd.addCommand("!TO", cmd_set_auto_timeout_on);    // _ #autoTimeoutOn (0 or 1)    // Toggle functionality
+    scmd.addCommand("!VM", cmd_set_voltage_max);        // _ #Vmax (in range 0 to 3000) // Set maximum allowed voltage for tips (3000 is a hard limit in the source file)
+    scmd.addCommand("!LT", cmd_set_update_leds_time);   // _ #update_vsense_leds_time   // Set time period of Vsense LEDs updating based on read voltage
 
 	// General:
-	scmd.addCommand("!PS", cmd_print_state);            // _ /  // Print state of the configuration
-	scmd.addCommand("!PA", cmd_setPrintAll);            // _ #printAll (0 or 1)
-	scmd.addCommand("Test", cmd_test);                  // _ (#a #b #c #d ...)
-	scmd.addDefaultHandler(unrecognized);
-
-
-	// TODO: legacy
-	pinMode(LED_BUILTIN, OUTPUT);   // Builtin LED
-
+	scmd.addCommand("!PS", cmd_print_state);            // _ /                          // Print state of the configuration
+	scmd.addCommand("!PA", cmd_setPrintAll);            // _ #printAll (0 or 1)         // Toggle verbosity of printouts
+	scmd.addCommand("help", cmd_print_help);            // _ /                          // Print (this) help
+	scmd.addCommand("test", cmd_test);                  // _ (#a #b #c #d ...)          // Test function that echoes the arguments and blinks the LEDs on the PCB
+	scmd.addDefaultHandler(unrecognized);               // Gets executed when the command was not recognized (Note the comment about MAXSERIALCOMMANDS in the code above)
+    // --------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     // D-ADCs:
     // TODO: check the i2c addresses and select them here in the code (even if we know that boards have defaults)
@@ -131,19 +123,17 @@ void setup() {
     ads1115.setGain(GAIN_ONE); 
 
     mcp4728.begin();
-    // TODO now: set the voltage based on the serial command
+    // For initialization put all voltages to zero:
     mcp4728.setChannelValue(MCP4728_CHANNEL_A, 0);
     mcp4728.setChannelValue(MCP4728_CHANNEL_B, 0);
     mcp4728.setChannelValue(MCP4728_CHANNEL_C, 0);
     mcp4728.setChannelValue(MCP4728_CHANNEL_D, 0);
 
-
 	Serial.println(F("Setup done."));
-	Serial.println(F("File: V02_pcb_hotfix.ino, 2 tips version"));
+	Serial.println(F("File: V02_pcb_hotfix.ino, v0.1.1"));
     Serial.print(F("MAXSERIALCOMMANDS should be 15. It is: ")); Serial.println(MAXSERIALCOMMANDS);
 	turnOff();
 }
-
 
 void loop() {
 	// Manage serial commands:
@@ -171,6 +161,7 @@ void loop() {
 // -- Functions ------------------------------------------------------------------------
 
 int mV_2_DA(long mV) {
+    // TODO: today - use the defines
 	long val;
 	int DA;
 
@@ -187,26 +178,23 @@ int mV_2_DA(long mV) {
 	return DA;
 }
 
-
 int16_t read_adc(int pin_number) {
     int16_t adc;
     adc = ads1115.readADC_SingleEnded(pin_number);
     return adc;
 }
 
-
 long AD_2_mV(long AD) {
+    // TODO: today - use the defines
 	return AD*4710/32768; // 4700 mV is 32768 analog read value
 }
-
 
 void set_voltage_pin(int tip_number, int voltage) {
 	int DA;    // value to set to DAC
     long long_type_one = 1;
 
-	// TODO:
-	// Do it nicer: Limit the output voltage yo Vmax (3V - or whatever)
     if (voltage > Vmax) {
+        // Apply voltage limit
         voltage = Vmax;
         if (printAll) Serial.print(F("Voltage limit applied. Limit: ")); Serial.println(Vmax);
     }
@@ -224,11 +212,9 @@ void set_voltage_pin(int tip_number, int voltage) {
 }
 
 long get_voltage_pin(int tip_number) {
-
     long voltage = AD_2_mV(read_adc(vs_pin_of_tip[tip_number]));
 
-    // TODO: make the led for reading a bit nicer, and maybe read every 100 ms or so, not just when read is called.
-    leds[vs_led_of_tip[tip_number]] = CRGB(0, 255*voltage/VCC, 0);  // green - Brightness as percent of "Vcc"
+    leds[vs_led_of_tip[tip_number]] = CRGB(0, 255*voltage/VCC, 0);  // Green - Brightness as percent of "Vcc"
     FastLED.show();
     update_vsense_leds_timers[tip_number] = millis();
 
@@ -239,21 +225,6 @@ bool is_valid_tip_number(int tip_number) {
     return (0 <= tip_number && tip_number <= 1);
 }
 
-
-void blinkBuiltinLED(int number, int blinkTime) {
-	// -number blinks, time of one blink-on-of is -blinktime (in ms)
-
-	digitalWrite(LED_BUILTIN, LOW); 
-
-	for (int i = 0; i < number; i++) {
-		digitalWrite(LED_BUILTIN, HIGH);   
-		delay(blinkTime/2);                
-		digitalWrite(LED_BUILTIN, LOW);    
-		delay(blinkTime/2); 
-	}
-}
-
-
 void turnOff() {
 	for(int i = 0; i<NUM_LEDS; i++){
 		leds[i] = CRGB(0, 0, 0);
@@ -261,9 +232,8 @@ void turnOff() {
 	FastLED.show();
 }
 
-
 void LEDsRGB(int R, int G, int B) {
-	// Turns all leds to white with set brightness
+	// Turns all leds to the provided RGB value
 	for(int i = 0; i<NUM_LEDS; i++){
 		leds[i] = CRGB(R, G, B);
 	}
@@ -274,19 +244,16 @@ void LEDsRGB(int R, int G, int B) {
 // -- SerialCommand functions: ---------------------------------------------------------
 
 void unrecognized() {
-	Serial.println(F("Unrecognized command."));
-
+	Serial.println(F("Unrecognized command. Use 'help' to get list of available commands."));
     LEDsRGB(50, 0, 0);
     delay(50);
     turnOff();
 }
 
-
 void cmd_test() {
 	Serial.println(F("cmd_test function call."));
 
 	char * arg;
-
 	arg = scmd.next();
 	while(arg != NULL) {
 		Serial.print(arg);
@@ -301,26 +268,6 @@ void cmd_test() {
     turnOff();
 
 	Serial.println(F("End of test function."));
-}
-
-
-void cmd_set_voltage() {
-	char * arg;
-	int val;
-
-	arg = scmd.next();
-	if ( arg != NULL) {
-		val = atol( arg );
-
-		set_voltage_pin(0, val);
-
-    Serial.print(F("#VI ")); Serial.println(val);
-		
-		if (printAll) {
-			Serial.print(F("voltage set to "));
-			Serial.println(val);
-		}
-	}
 }
 
 void cmd_set_single_tip() {
@@ -350,11 +297,11 @@ void cmd_set_single_tip() {
 
 void cmd_set_all_tips() {
     // Example call: !AT 150 400
+    // TODO: today
 }
 
 void cmd_get_single_tip() {
     // Example call: ?ST 0
-
     char * arg;
 	int tip_number;
 
@@ -366,28 +313,13 @@ void cmd_get_single_tip() {
         if (printAll) {
             Serial.print(F("That was Vsense read for tip "));
             Serial.println(tip_number);
-
         }
-
-
     }
-    
 }
 
 void cmd_get_all_tips() {
     // Example call: ?AT
-}
-
-
-void cmd_get_voltage () {
-	// TODO:
-
-
-  Serial.print(F("#VS ")); Serial.println(AD_2_mV(read_adc(T1_VS_PIN_NUMBER)));
-	if (printAll) {
-		Serial.println(F("That was VsensePin [mV] "));
-	}
-	
+    // TODO: today
 }
 
 // -------------------------------------------------------------------------------------
@@ -486,4 +418,28 @@ void cmd_print_state() {
     Serial.print(F("  VCC: ")); Serial.println(VCC);
     Serial.print(F("  N_BITS_ADC: ")); Serial.println(N_BITS_ADC);
     Serial.print(F("  N_BITS_DAC: ")); Serial.println(N_BITS_DAC);
+}
+
+void cmd_print_help() {
+    Serial.println(F("----------- Help -------------------"));
+    Serial.println(F("// Example for using and reading this documentation: "));
+    Serial.println(F("// Command is described in the line declaring the command and the comment. _ in the comment denotes command string (!ST in this case):"));
+    Serial.println(F("// scmd.addCommand('!ST', cmd_set_single_tip)                  //_ #tipNumber #voltageIn"));
+    Serial.println(F("// Using the command to set 500 mV for tip number 0 looks like: !ST 0 500"));
+    Serial.println(F("scmd.addCommand('!ST', cmd_set_single_tip);         // _ #tipNumber #voltageIn      // Set voltage In for a single tip (tip number starts with zero)"));
+    Serial.println(F("scmd.addCommand('!AT', cmd_set_all_tips);           // _ #voltageInTip0 #voltageInTip1  // Set voltage for all tips"));
+    Serial.println(F("scmd.addCommand('?ST', cmd_get_single_tip);         // _ #tipNumber                 // Read voltage for a single tip (tip number starts with zero)"));
+    Serial.println(F("scmd.addCommand('?AT', cmd_get_all_tips);           // _ /                          // Read voltage of all tips"));
+    Serial.println(F("	"));
+    Serial.println(F("scmd.addCommand('!TT', cmd_set_auto_timeout_time);  // _ #autoTimeoutTime           // Set the time for auto time out (turn off) of the voltage of tips"));
+    Serial.println(F("scmd.addCommand('!TO', cmd_set_auto_timeout_on);    // _ #autoTimeoutOn (0 or 1)    // Toggle functionality"));
+    Serial.println(F("scmd.addCommand('!VM', cmd_set_voltage_max);        // _ #Vmax (in range 0 to 3000) // Set maximum allowed voltage for tips (3000 is a hard limit in the source file)"));
+    Serial.println(F("scmd.addCommand('!LT', cmd_set_update_leds_time);   // _ #update_vsense_leds_time   // Set time period of Vsense LEDs updating based on read voltage"));
+    Serial.println(F("// General:"));
+    Serial.println(F("scmd.addCommand('!PS', cmd_print_state);            // _ /                          // Print state of the configuration"));
+    Serial.println(F("scmd.addCommand('!PA', cmd_setPrintAll);            // _ #printAll (0 or 1)         // Toggle verbosity of printouts"));
+    Serial.println(F("scmd.addCommand('help', cmd_print_help);            // _ /                          // Print (this) help"));
+    Serial.println(F("scmd.addCommand('test', cmd_test);                  // _ (#a #b #c #d ...)          // Test function that echoes the arguments and blinks the LEDs on the PCB"));
+    Serial.println(F("scmd.addDefaultHandler(unrecognized);               // Gets executed when the command was not recognized (Note the comment about MAXSERIALCOMMANDS in the code above)"));
+    Serial.println(F("----------- End of help ------------"));
 }
