@@ -44,7 +44,6 @@
 #define LED_PIN     2  // Pin for LEDs on the PCB
 #define NUM_LEDS    4  // Number of LEDs on the PCB
 
-// TODO: today Use those values in the functions 
 #define VCC 4710 // mv
 #define N_BITS_ADC 32768 // 16 bit signed value
 #define N_BITS_DAC 4095 // 12 bit
@@ -161,14 +160,13 @@ void loop() {
 // -- Functions ------------------------------------------------------------------------
 
 int mV_2_DA(long mV) {
-    // TODO: today - use the defines
 	long val;
 	int DA;
 
-	val = mV*4095/4710;  // 4095 (12 bit DAC) scale is 4700 mV
+	val = mV*N_BITS_DAC/VCC;  // 4095 (12 bit DAC) scale is 4700 mV
 
-	if (val > 4095) {
-		DA = 4095;
+	if (val > N_BITS_DAC) {
+		DA = N_BITS_DAC;
 	} else if (val < 0) {
 		DA = 0;
 	} else {
@@ -185,8 +183,7 @@ int16_t read_adc(int pin_number) {
 }
 
 long AD_2_mV(long AD) {
-    // TODO: today - use the defines
-	return AD*4710/32768; // 4700 mV is 32768 analog read value
+	return AD*VCC/N_BITS_ADC; // 4700 mV is 32768 analog read value
 }
 
 void set_voltage_pin(int tip_number, int voltage) {
@@ -297,7 +294,25 @@ void cmd_set_single_tip() {
 
 void cmd_set_all_tips() {
     // Example call: !AT 150 400
-    // TODO: today
+
+    char * arg;
+	int voltage_0;
+	int voltage_1;
+
+	arg = scmd.next();
+	if (arg != NULL) {
+		voltage_0 = atol( arg );
+        set_voltage_pin(0, voltage_0);
+
+
+        arg = scmd.next();
+        if (arg != NULL) {
+            voltage_1 = atol( arg );
+            set_voltage_pin(0, voltage_1);
+        }
+
+        Serial.print(F("#AT ")); Serial.print(voltage_0); Serial.print(F(" ")); Serial.println(voltage_1);
+    }
 }
 
 void cmd_get_single_tip() {
@@ -319,7 +334,13 @@ void cmd_get_single_tip() {
 
 void cmd_get_all_tips() {
     // Example call: ?AT
-    // TODO: today
+	long voltage_0;
+	long voltage_1;
+
+    voltage_0 = get_voltage_pin(0);
+    voltage_1 = get_voltage_pin(1);
+            
+    Serial.print(F("#AT ")); Serial.print(voltage_0); Serial.print(F(" ")); Serial.println(voltage_1);
 }
 
 // -------------------------------------------------------------------------------------
