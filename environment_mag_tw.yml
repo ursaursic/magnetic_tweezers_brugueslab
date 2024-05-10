@@ -1,0 +1,9 @@
+name: mag_tw
+channels:
+  - defaults
+dependencies:
+  - conda-forge::pyserial
+  - python=3.11
+  - matplotlib
+  - ipykernel
+prefix: /Users/ursic/opt/anaconda3/envs/mag_tw
