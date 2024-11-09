@@ -18,6 +18,9 @@ When performing experiments, use the Jupyter notebook: magnetic_tweezers_brugues
 You need to use the virtual environment, which can be recreated using environment_mag_tw.yml file. 
 In the file magnetic_tweezers_brugueslab/scripts/voltage_control/my_functions.py, you can define different functions for voltage control. 
 
+### Other
+There are two other branches feat/inject_man and feat/two_tips. Those are branches we used to develop some additional functionalities of the setup but are currently not used for experiments. In principle, it is possible to control two separate tips. It is also possible to control the motion of inject man with the code.  
+
 
 
 
