@@ -1,6 +1,8 @@
 import logging
 import time
 import serial
+import sys
+import glob
 
 
 class serialConnection:
@@ -86,4 +88,55 @@ class serialConnection:
 		Tested in the lab on the injectman and no such problem could be found."""
 	
 
-	
+	# ------------------------------------------------------------------------------
+# Arduino functions
+
+
+def serial_ports():
+    """ Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
+
+
+def flush(sc):
+    """
+    Flush input buffer of the serial by reading and printing its contetnts.
+    
+    There is a hardcoded limit on how many lines are read.
+    """
+    flag_buffer_empty = False
+    print('... Flushing... ')
+    for i in range(100):
+        input_line = sc.readline()
+        # print(input_line)
+        if len(input_line) <= 0:
+            print('... nothing more to flush.')
+            flag_buffer_empty = True
+            break
+    if not flag_buffer_empty:
+        print('!! There might still be data in the buffer. Try flushing again.')
+    else: 
+        print('... flushing successfull!')
